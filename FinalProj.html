@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scatterplot with D3.js</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <!-- Create a container for the scatterplot -->
+    <div id="scatterplot"></div>
+
+    <script>
+        // Load the JSON data using d3.json()
+        d3.json("results.json").then(function(data) {
+            // Accessing the data
+            console.log(data); // Print the entire JSON data to console
+
+            // Extracting data for a specific state (e.g., "Andhra Pradesh")
+            var stateData = data["Uttar Pradesh"];
+            var years = Object.keys(stateData); // Get the years
+            var partyData = []; // Array to store party data for each year
+
+            // Loop through each year to extract party data
+            years.forEach(function(year) {
+                var yearData = stateData[year];
+                Object.entries(yearData).forEach(function([party, values]) {
+                    // Push party data to the array
+                    partyData.push({
+                        year: parseInt(year), // Convert year to integer
+                        party: party,
+                        value: values[1] // Second value of each party data
+                    });
+                });
+            });
+
+            // Call the function to draw the scatterplot
+            drawScatterplot(partyData);
+        }).catch(function(error) {
+            // Handle error if any
+            console.error("Error loading the JSON file: " + error);
+        });
+
+        // Function to draw the scatterplot
+        function drawScatterplot(data) {
+            var margin = { top: 100, right: 100, bottom: 100, left: 100 },
+                width = 500 - margin.left - margin.right,
+                height = 500 - margin.top - margin.bottom;
+
+            NDAlist=["BJP, NPP, AJSUP, AINRC, ADS, AAGP, HSPDP, IPFT, JDS, JDU, LJPRV, MGP, NPF, NCP, NDPP, RLJP, SHS, SKM, TDP, TMP, UDP, UPPL, AMNK, BDJS, GNLF, HLP, HAM, JSS, JSP, KKC, NP, PJP, PMK, PNK, RLD, RLM, RSP, RPIA, SBSP, TMCM"];
+            UPAlist=["INC", "DMK", "NCP", "RJD", "IUML", "JKNC", "JMM", "MDMK", "RSP", "VCK", "AJP", "GFP", "KC", "RMP", "RMPI", "AGM", "NCK", "PWPI"];
+            
+            var svg = d3.select("#scatterplot")
+                .append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+            var parties = Array.from(new Set(data.map(d => d.party))); // Get unique parties
+
+            var colorScale = d3.scaleOrdinal()
+                .domain(parties)
+                .range(d3.schemeCategory10); // Use a categorical color scheme
+
+            var xScale = d3.scaleLinear()
+                .domain(d3.extent(data, d => d.year))
+                .range([0, width]);
+
+            var yScale = d3.scaleLinear()
+                .domain([0, d3.max(data, d => d.value)])
+                .range([height, 0]);
+
+            var xAxis = svg.append("g")
+                .attr("transform", "translate(0," + height + ")")
+                .call(d3.axisBottom(xScale));
+
+            var yAxis = svg.append("g")
+                .call(d3.axisLeft(yScale));
+
+            // Add circles for each data point
+            svg.selectAll("circle")
+                .data(data)
+                .enter().append("circle")
+                .attr("cx", d => xScale(d.year))
+                .attr("cy", d => yScale(d.value))
+                .attr("r", 6)
+                .attr("fill", d => colorScale(d.party)); // Color based on party
+
+            // Add x-axis label
+            svg.append("text")
+                .attr("x", width / 2)
+                .attr("y", height + 40)
+                .attr("text-anchor", "middle")
+                .text("Year");
+
+            // Add y-axis label
+            svg.append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 0 - margin.left)
+                .attr("x", 0 - (height / 2))
+                .attr("dy", "1em")
+                .style("text-anchor", "middle")
+                .text("Aggregate of Votes");
+
+            // Add legend
+            var legend = svg.selectAll(".legend")
+                .data(parties)
+                .enter().append("g")
+                .attr("class", "legend")
+                .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+
+            legend.append("rect")
+                .attr("x", width+80)
+                .attr("width", 18)
+                .attr("height", 18)
+                .style("fill", colorScale);
+
+            legend.append("text")
+                .attr("x", width+78)
+                .attr("y", 9)
+                .attr("dy", ".35em")
+                .style("text-anchor", "end")
+                .text(function(d) { return d; });
+        }
+    </script>
+</body>
+</html>
