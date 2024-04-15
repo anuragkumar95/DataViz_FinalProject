@@ -16,7 +16,7 @@
             // Accessing the data
             console.log(data); // Print the entire JSON data to console
 
-            // Extracting data for a specific state (e.g., "Andhra Pradesh")
+            // Extracting data for a specific state (e.g., "Uttar Pradesh")
             var stateData = data["Uttar Pradesh"];
             var years = Object.keys(stateData); // Get the years
             var partyData = []; // Array to store party data for each year
@@ -25,12 +25,15 @@
             years.forEach(function(year) {
                 var yearData = stateData[year];
                 Object.entries(yearData).forEach(function([party, values]) {
-                    // Push party data to the array
-                    partyData.push({
-                        year: parseInt(year), // Convert year to integer
-                        party: party,
-                        value: values[1] // Second value of each party data
-                    });
+                    // Check if the second value is greater than 0.05
+                    if (values[1] > 0.05) {
+                        // Push party data to the array
+                        partyData.push({
+                            year: parseInt(year), // Convert year to integer
+                            party: party,
+                            value: values[1] // Second value of each party data
+                        });
+                    }
                 });
             });
 
@@ -47,9 +50,6 @@
                 width = 500 - margin.left - margin.right,
                 height = 500 - margin.top - margin.bottom;
 
-            NDAlist=["BJP, NPP, AJSUP, AINRC, ADS, AAGP, HSPDP, IPFT, JDS, JDU, LJPRV, MGP, NPF, NCP, NDPP, RLJP, SHS, SKM, TDP, TMP, UDP, UPPL, AMNK, BDJS, GNLF, HLP, HAM, JSS, JSP, KKC, NP, PJP, PMK, PNK, RLD, RLM, RSP, RPIA, SBSP, TMCM"];
-            UPAlist=["INC", "DMK", "NCP", "RJD", "IUML", "JKNC", "JMM", "MDMK", "RSP", "VCK", "AJP", "GFP", "KC", "RMP", "RMPI", "AGM", "NCK", "PWPI"];
-            
             var svg = d3.select("#scatterplot")
                 .append("svg")
                 .attr("width", width + margin.left + margin.right)
@@ -84,8 +84,22 @@
                 .enter().append("circle")
                 .attr("cx", d => xScale(d.year))
                 .attr("cy", d => yScale(d.value))
-                .attr("r", 6)
+                .attr("r", 4)
                 .attr("fill", d => colorScale(d.party)); // Color based on party
+
+            // Add lines connecting dots of the same color
+            parties.forEach(function(party) {
+                var partyValues = data.filter(d => d.party === party);
+                svg.append("path")
+                    .datum(partyValues)
+                    .attr("fill", "none")
+                    .attr("stroke", colorScale(party))
+                    .attr("stroke-width", 2)
+                    .attr("d", d3.line()
+                        .x(d => xScale(d.year))
+                        .y(d => yScale(d.value))
+                    );
+            });
 
             // Add x-axis label
             svg.append("text")
@@ -103,7 +117,7 @@
                 .style("text-anchor", "middle")
                 .text("Aggregate of Votes");
 
-            // Add legend
+            // Add legends
             var legend = svg.selectAll(".legend")
                 .data(parties)
                 .enter().append("g")
@@ -111,13 +125,13 @@
                 .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
 
             legend.append("rect")
-                .attr("x", width+80)
+                .attr("x", width+70)
                 .attr("width", 18)
                 .attr("height", 18)
                 .style("fill", colorScale);
 
             legend.append("text")
-                .attr("x", width+78)
+                .attr("x", width+68)
                 .attr("y", 9)
                 .attr("dy", ".35em")
                 .style("text-anchor", "end")
