@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stacked Bar Chart with D3.js</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <div id="stacked-barchart"></div>
+
+    <script>
+        d3.json("results.json").then(function(data) {
+            var stateData = data["Andhra Pradesh"];
+            var years = Object.keys(stateData);
+
+            // Flatten the data to calculate the threshold
+            var allValues = [];
+            Object.entries(stateData).forEach(([year, parties]) => {
+                Object.values(parties).forEach(value => {
+                    allValues.push(value);
+                });
+            });
+
+            // Sort values to find the 5% threshold
+            allValues.sort(d3.ascending);
+            var threshold = d3.quantile(allValues, 0.05);
+
+            // Filter the data to exclude entries below the threshold
+            var filteredData = years.map(year => {
+                var yearData = {};
+                Object.entries(stateData[year]).forEach(([party, value]) => {
+                    if (value > threshold) {
+                        yearData[party] = value;
+                    }
+                });
+                return {year: year, ...yearData};
+            });
+
+            // Prepare the data for the stacked bar chart
+            var keys = Object.keys(stateData[years[0]]).filter(key => filteredData.some(d => d[key] > threshold));
+            var seriesData = d3.stack().keys(keys)(filteredData);
+
+            var margin = { top: 50, right: 20, bottom: 50, left: 60 },
+                width = 960 - margin.left - margin.right,
+                height = 500 - margin.top - margin.bottom;
+
+            var svg = d3.select("#stacked-barchart")
+                .append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+            var x = d3.scaleBand()
+                .domain(filteredData.map(d => d.year))
+                .rangeRound([0, width])
+                .padding(0.1);
+
+            var y = d3.scaleLinear()
+                .domain([0, d3.max(seriesData, d => d3.max(d, d => d[1]))])
+                .rangeRound([height, 0]);
+
+            var z = d3.scaleOrdinal(d3.schemeCategory10);
+
+            svg.append("g")
+                .selectAll("g")
+                .data(seriesData)
+                .enter().append("g")
+                  .attr("fill", d => z(d.key))
+                .selectAll("rect")
+                .data(d => d)
+                .enter().append("rect")
+                  .attr("x", d => x(d.data.year))
+                  .attr("y", d => y(d[1]))
+                  .attr("height", d => y(d[0]) - y(d[1]))
+                  .attr("width", x.bandwidth());
+
+            svg.append("g")
+                .attr("class", "axis")
+                .attr("transform", "translate(0," + height + ")")
+                .call(d3.axisBottom(x));
+
+            svg.append("g")
+                .attr("class", "axis")
+                .call(d3.axisLeft(y).ticks(null, "s"))
+                .append("text")
+                .attr("x", 2)
+                .attr("y", y(y.ticks().pop()) + 0.5)
+                .attr("dy", "0.32em")
+                .attr("fill", "#000")
+                .attr("font-weight", "bold")
+                .attr("text-anchor", "start")
+                .text("Vote Percentage");
+
+            var legend = svg.append("g")
+                .attr("font-family", "sans-serif")
+                .attr("font-size", 10)
+                .attr("text-anchor", "end")
+                .selectAll("g")
+                .data(seriesData.reverse())
+                .enter().append("g")
+                  .attr("transform", (d, i) => "translate(0," + i * 20 + ")");
+
+            legend.append("rect")
+                .attr("x", width - 19)
+                .attr("width", 19)
+                .attr("height", 19)
+                .attr("fill", z);
+
+            legend.append("text")
+                .attr("x", width - 24)
+                .attr("y", 9.5)
+                .attr("dy", "0.32em")
+                .text(d => d.key);
+        }).catch(function(error) {
+            console.error("Error loading the JSON file: " + error);
+        });
+    </script>
+</body>
+</html>
